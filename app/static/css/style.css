@@ -1,7 +1,7 @@
 :root {
-  --color-primary: #005AAC;
-  --color-accent:  #00C2F3;
-  --color-bg:      #F3F8FC;
+  --color-primary: #00875A;   /* Verde principal */
+  --color-accent:  #00D084;   /* Verde acento */
+  --color-bg:      #F3FBF7;   /* Fondo muy claro verdoso */
   --color-white:   #FFFFFF;
   --color-text:    #1B1E23;
   --radius:        12px;
@@ -161,14 +161,13 @@ form button:hover {
 
 /* Título del header */
 .app-title {
-  font-family: inherit;    /* hereda el mismo tipo de letra del resto */
-  font-size: 2rem;         /* un poco más grande que .section-title (1.5rem) */
+  font-family: inherit;
+  font-size: 2rem;
   margin: 0;
-  /* un azul oscuro similar al del logo: ajustalo si hace falta */
-  color: #012f6e;
+  color: #015E3E;  /* Verde oscuro institucional */
 }
 
 .app-logo {
   width: 300px !important;
   height: auto !important;
-}
+} 

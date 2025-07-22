@@ -24,6 +24,7 @@ def ejecutar_nodo(nodo_id, variables):
         201: nodo_201,
         202: nodo_202,
         203: nodo_203,
+        205: nodo_205,
         300: nodo_300
     }
     return NODOS[nodo_id](variables)
@@ -601,13 +602,37 @@ def nodo_103(variables):
 
 def nodo_200(variables):
     """
+    Nodo inicial de bienvenida en el flujo; Ley 25.326 
+    """
+    response_text = (
+        "👋 Hola, soy el co-piloto de PX.\n"
+        "Antes de continuar, necesitamos tu consentimiento para tratar tus datos personales y de salud según la Ley 25.326, la política del hospital y nuestros Terminos y Condiciones.\n"
+        "Si estás de acuerdo, respondé *Acepto*\n"
+        "Más información: pacientex.com.ar/politica-privacidad\n"
+        "Si querés consultar o ejercer tus derechos de acceso, rectificación o supresión de datos, escribí *Privacidad*"
+    )
+    print(response_text)    
+
+    return {
+        "nodo_destino": 205,
+        "subsiguiente": 1,
+        "conversation_str": variables.get("conversation_str", ""),
+        "response_text": response_text,
+        "group_id": None,
+        "question_id": None,
+        "result": "Abierta"
+    }
+
+
+def nodo_205(variables):
+    """
     Nodo inicial de bienvenida en el flujo.
     """
     import app.services.brain as brain
     conversation_str = variables["conversation_str"]
     
     listen_and_speak = (
-        "Podrias escuchar este mensaje: "+ variables["body"] + "Darle la bienvenida, y responder presentandote como PX y pedile que te de mas detalle de su patologia, haciendo la pregunta de a una?"
+        "Podrias leer este historial y formular la pregunta en base al mismo: "+ conversation_str + "Pedile que te de mas detalle de su patologia. Por favor, no escribas nada antes ni despues de la respuesta e intentar ser breve"
     )
     
     messages = [{"role": "assistant", "content": listen_and_speak}]
@@ -741,7 +766,7 @@ def nodo_203(variables):
     question_id_str = builtins.str(question_id)
 
     if question_id_str == "1":
-        mensaje_intro = "Te voy a hacer " + max_preguntas_str + " preguntas para entender mejor que te anda pasando ."
+        mensaje_intro = "Por los sintomas que planteas voy a necesitar hacerte " + max_preguntas_str + " preguntas para entender mejor que te anda pasando ."
         twilio.send_whatsapp_message(mensaje_intro, sender_number, None)
 
     if question_id > max_preguntas:
