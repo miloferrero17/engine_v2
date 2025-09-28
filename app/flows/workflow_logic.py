@@ -25,7 +25,8 @@ def ejecutar_nodo(nodo_id, variables):
         202: nodo_202,
         203: nodo_203,
         205: nodo_205,
-        300: nodo_300
+        300: nodo_300,
+        600: nodo_600
     }
     return NODOS[nodo_id](variables)
 
@@ -857,6 +858,49 @@ def nodo_300(variables):
 
     return {
         "nodo_destino": 300,
+        "subsiguiente": 1,
+        "conversation_str": variables.get("conversation_str", ""),
+        "response_text": response_text,
+        "group_id": None,
+        "question_id": None,
+        "result": "Abierta"
+    }
+
+
+
+#############################################################
+# LMC
+#############################################################
+
+def nodo_600(variables):
+    """
+    Nodo de preguntas de Etapa 1: Producto.
+    """
+    import app.services.brain as brain
+    tx = variables["tx"]
+    ctt = variables["ctt"]
+    ev = variables["ev"]
+    numero_limpio = variables["numero_limpio"]
+    contacto = ctt.get_by_phone(numero_limpio)    
+    conversation_str = tx.get_open_conversation_by_contact_id(contacto.contact_id)
+    conversation_history = variables["conversation_history"]
+
+    assistant_text = ev.get_assistant_by_event_id(1)
+    print(assistant_text)
+    
+    if not assistant_text:
+        raise ValueError("El texto del asistente es None. Verificá ev.get_assistant_by_event_id(1).")
+
+    conversation_history.append({
+        "role": "assistant",
+        "content": assistant_text
+    })
+
+    response_text = brain.ask_openai(conversation_history)
+
+
+    return {
+        "nodo_destino": 600,
         "subsiguiente": 1,
         "conversation_str": variables.get("conversation_str", ""),
         "response_text": response_text,

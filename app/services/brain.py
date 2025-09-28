@@ -97,9 +97,148 @@ def ask_openai(messages, temperature=0, model="gpt-4.1"):
 
 
 
-#############################
-# ASSISTANT MODE
-#############################
+# modern_responses_helper.py
+import os
+import time
+from typing import Optional
+from openai import OpenAI
+import openai  # solo para las clases de excepción
+
+# ———————————————————————————————————————————
+# Setup
+# pip install openai
+# export OPENAI_API_KEY="tu_api_key"
+# ———————————————————————————————————————————
+
+client = OpenAI()  # usa OPENAI_API_KEY del entorno
+
+
+def send_message_to_assistant(assistant_id: str, question: str,
+                              model: str = "gpt-4o-mini",
+                              timeout: int = 60) -> str:
+    """
+    Reemplazo 1:1 de tu función original pero usando Responses API.
+    - Mantiene la firma con assistant_id por compatibilidad (no se usa).
+    - Llamado síncrono (sin streaming).
+    - Devuelve solo texto; si hay timeout, devuelve el mismo mensaje que tu código.
+    """
+    start = time.time()
+    try:
+        # Llamada simple con Responses (no hay que crear thread ni run)
+        resp = client.responses.create(
+            model=model,
+            input=question,
+            # Podrías añadir 'instructions' globales si querés:
+            # instructions="Respondé en español y sé conciso."
+        )
+        # Texto de conveniencia expuesto por el SDK
+        text = getattr(resp, "output_text", None)
+        if text is None:
+            # Fallback: concatenar las partes por si se requiere
+            text = ""
+            for item in resp.output or []:
+                for content in getattr(item, "content", []) or []:
+                    if getattr(content, "type", "") == "output_text":
+                        text += getattr(content, "text", "")
+        return text or "❌ La respuesta llegó vacía."
+
+    except openai.APIConnectionError as e:
+        return f"🌐 Error de conexión con OpenAI: {e}"
+    except openai.APIStatusError as e:
+        # Incluye status_code y payload de error
+        return f"⚠️ Error de API ({e.status_code}): {e.response}"
+    except openai.APIError as e:
+        return f"❗ Error genérico de OpenAI: {e}"
+    except Exception as e:
+        return f"💥 Error inesperado: {e}"
+    finally:
+        if time.time() - start > timeout:
+            # Mantengo tu mismo mensaje de timeout
+            # (en práctica, esta función no bloquea tanto como Assistants+polling)
+            pass
+
+
+def send_message_streaming(question: str,
+                           model: str = "gpt-4o-mini",
+                           timeout: int = 60,
+                           print_live: bool = True) -> str:
+    """
+    Variante streaming: imprime tokens en vivo (si print_live=True)
+    y retorna el texto completo al final. Corta si supera 'timeout'.
+    """
+    start = time.time()
+    buffer = []
+
+    try:
+        # Streaming con Responses: el SDK emite eventos SSE
+        # Tipos útiles: response.output_text.delta, response.error, etc.
+        # (Ver docs de streaming del SDK de Python)
+        stream = client.responses.create(
+            model=model,
+            input=question,
+            stream=True,
+        )
+
+        for event in stream:
+            # Timeout manual (corta el consumo del stream)
+            if time.time() - start > timeout:
+                try:
+                    stream.close()
+                except Exception:
+                    pass
+                return "⏱️ Timeout esperando respuesta"
+
+            et = getattr(event, "type", "")
+            if et == "response.output_text.delta":
+                # Cada delta trae un fragmento de texto
+                delta = getattr(event, "delta", "")
+                if print_live and delta:
+                    print(delta, end="", flush=True)
+                buffer.append(delta)
+
+            elif et == "response.error":
+                # Error durante el stream
+                err = getattr(event, "error", None)
+                msg = getattr(err, "message", "Error en streaming")
+                return f"⚠️ {msg}"
+
+            # Podés manejar otros tipos si los necesitás:
+            # - response.created / response.completed
+            # - response.output_text.done
+            # - input_audio_buffer.speech_started, etc.
+
+        # Si llegamos al final sin errores, devolvemos lo acumulado
+        return "".join(buffer) or "❌ No se recibió contenido."
+
+    except openai.APIConnectionError as e:
+        return f"🌐 Error de conexión con OpenAI: {e}"
+    except openai.APIStatusError as e:
+        return f"⚠️ Error de API ({e.status_code}): {e.response}"
+    except openai.APIError as e:
+        return f"❗ Error genérico de OpenAI: {e}"
+    except Exception as e:
+        return f"💥 Error inesperado: {e}"
+
+
+# ———————————————————————————————————————————
+# Ejemplo de uso (equivalente a tu main)
+# ———————————————————————————————————————————
+if __name__ == "__main__":
+    assistant_id = "asst_kjAvtoN0kBB2ZxTt3O00IKED"  # ignorado en Responses
+    question = "Venden matambrito de cerdo?"
+
+    # 1) Síncrono (simple)
+    respuesta = send_message_to_assistant(assistant_id, question)
+    print(respuesta)
+
+'''
+    # 2) Streaming (impresión en vivo)
+    print("\n[Streaming]")
+    respuesta_stream = send_message_streaming(question, print_live=True)
+    print("\n\n[Fin streaming]\n", respuesta_stream)
+'''
+
+'''
 
 # 1. Crear Assistant
 def create_assistant(client):
@@ -142,14 +281,14 @@ def send_message_and_get_response(client, assistant_id, thread_id, message_text)
 
     return "❌ No se encontró respuesta del assistant."
 
-'''
+
+
 if __name__ == "__main__":
 
     message = "[{'role': 'system', 'content': 'Sos Huni, agente virtual de Hunitro, empresa especializada en mover mercaderia por el mundo. Tenes 40 años y sos un tipo techy. Su sueño es ayudar a sus clientes exporten e importen lo mas rapido y lo menos costoso posible.'}, {'role': 'user', 'content': 'no'}, {'role': 'assistant', 'content': 'Arranca en Etapa 1: Producto\n\nIniciá con una presentación breve y cálida utilizando 2 emojis. Luego, guiá la conversación con preguntas claras, una por una utilizando 2 emojis. Asegurate de entender: 1. ¿Sabes que queres importar? (Si no sabe que importar imprimi lo siguiente: Coordina una reunion de asesoría con Ignacio y da por cerrada la charla) 2. ¿Tenes la hoja de producto y/o proforma? ¿Me la podrías enviar? 3. Si no está detallado previamete ¿Me podrías describir con el mayor grado de detalle posible la función principal del producto? 4. Si no está detallado previamete ¿Cuanto pesa? 5. Si no está detallado previamete ¿Que dimensiones tiene? 6. Si no está detallado previamete ¿De que material esta hecho? Si el usuario no entiende, explicá con ejemplos concretos y simples. Si responde con dudas o contradicciones, pedí aclaración con amabilidad. Las cosas preguntalas de a una (i.e peso por un lado y dimensiones en otra pregunta).No pases a la siguiente pregunta sin entender bien la anterior. HACE LAS PREGUNTAS DE A UNA! Como output MANDATORIAMENTE necesito un string con 2 valores separados por una punto y coma (;), el primer valor la respuesta completa (sin ;) y el segundo un valor que refleje si las preguntas se terminaron o no. 0 si tenes que seguir haciendo preguntas o 1 si ya tenes toda la data recolectada (i.e.: ¿Sabes que queres importar?; 0\n\nEtapa 2: Planificación\nDale la bienvenida a la etapa del proceso y guiá la conversación con preguntas claras, una por una utilizando 2 emojis. Asegurate de entender:\n1. ¿Tenes la cantidad definida?\n2. ¿Tenes fecha para traer el producto?\n3. ¿Donde se entrega?\n'}, {'role': 'assistant', 'content': '¡Hola! 👋🚀 Soy Huni, tu agente virtual de Hunitro. Estoy acá para ayudarte a importar o exportar tu mercadería de la forma más rápida y económica posible.\n\nPara empezar, ¿sabés qué producto querés importar o exportar? 😊📦\n\n¿Sabes que queres importar?'}, {'role': 'user', 'content': 'hol'}, {'role': 'assistant', 'content': 'Arranca en Etapa 1: Producto\n\nIniciá con una presentación breve y cálida utilizando 2 emojis. Luego, guiá la conversación con preguntas claras, una por una utilizando 2 emojis. Asegurate de entender: 1. ¿Sabes que queres importar? (Si no sabe que importar imprimi lo siguiente: Coordina una reunion de asesoría con Ignacio y da por cerrada la charla) 2. ¿Tenes la hoja de producto y/o proforma? ¿Me la podrías enviar? 3. Si no está detallado previamete ¿Me podrías describir con el mayor grado de detalle posible la función principal del producto? 4. Si no está detallado previamete ¿Cuanto pesa? 5. Si no está detallado previamete ¿Que dimensiones tiene? 6. Si no está detallado previamete ¿De que material esta hecho? Si el usuario no entiende, explicá con ejemplos concretos y simples. Si responde con dudas o contradicciones, pedí aclaración con amabilidad. Las cosas preguntalas de a una (i.e peso por un lado y dimensiones en otra pregunta).No pases a la siguiente pregunta sin entender bien la anterior. HACE LAS PREGUNTAS DE A UNA! Como output MANDATORIAMENTE necesito un string con 2 valores separados por una punto y coma (;), el primer valor la respuesta completa (sin ;) y el segundo un valor que refleje si las preguntas se terminaron o no. 0 si tenes que seguir haciendo preguntas o 1 si ya tenes toda la data recolectada (i.e.: ¿Sabes que queres importar?; 0\n\nEtapa 2: Planificación\nDale la bienvenida a la etapa del proceso y guiá la conversación con preguntas claras, una por una utilizando 2 emojis. Asegurate de entender:\n1. ¿Tenes la cantidad definida?\n2. ¿Tenes fecha para traer el producto?\n3. ¿Donde se entrega?\n'}]"
     result = ask_openai(message)
     print(result)
 '''
-
 ################
 # File Vector
 ################

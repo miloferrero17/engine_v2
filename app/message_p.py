@@ -83,8 +83,9 @@ def handle_incoming_message(body, to,  tiene_adjunto, media_type, file_path, tra
 
     contacto = ctt.get_by_phone(numero_limpio)
 
+    
     #### 1) Reseteo
-    if body in ("R1", "R2", "R3", "R4", "R5", "R6", "R7"):
+    if body in ("R1", "R2", "R3", "R4", "R5", "R6", "R7", "R16"):
         event_id = int(body[1:])    # toma desde el índice 1 hasta el final
         print(event_id)
         msg_key = ev.get_nodo_inicio_by_event_id(event_id)
@@ -209,6 +210,15 @@ def handle_incoming_message(body, to,  tiene_adjunto, media_type, file_path, tra
             phone=numero_limpio
         )
 
+        msg_key = ev.get_nodo_inicio_by_event_id(event_id)
+        msj.add(
+            msg_key=500,
+            text="Nuevo contacto",
+            phone=numero_limpio,
+            event_id=event_id,
+            question_id=0   
+        )
+        
         print("1) Contacto creado")
         
         
@@ -457,4 +467,4 @@ def handle_incoming_message(body, to,  tiene_adjunto, media_type, file_path, tra
 
 
 if __name__ == "__main__":
-    handle_incoming_message("acepto", "whatsapp:+5491133585362",  0, "", "","", "","",)
+    handle_incoming_message("hola amigo", "whatsapp:+5491133585362",  0, "", "","", "","",)
