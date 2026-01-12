@@ -44,4 +44,4 @@
     GET	/status	Health check          
 
   # 👤 Autor
-  Emilio Ferrero – [LinkedIn](https://www.linkedin.com/in/emilio-ferrero-87a64928/) – Consultor en AI y tecnología para salud, pagos y comercio exterior.
+  Emilio Ferrero – [LinkedIn](https://www.linkedin.com/in/emilio-ferrero-87a64928/) – Fintech | Healthtech
